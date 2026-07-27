@@ -205,8 +205,8 @@ Claude Code처럼 슬래시 명령으로 스킬을 직접 지정할 수 있는 �
 
 | 환경변수 | 발급처 | 이 키로 조회하는 것 | 사용하는 스크립트 |
 |---|---|---|---|
-| `ODCLOUD_SERVICE_KEY` | [data.go.kr](https://www.data.go.kr) | 국세청 사업자상태 (폐업·휴업)<br>국민연금 사업장 (직원 수·입퇴사 추이) | `check_business_status.py`<br>`lookup_workplace.py` |
-| `DART_API_KEY` | [opendart.fss.or.kr](https://opendart.fss.or.kr) | DART 재무제표·감사의견·공시 이상 신호 | `dart_lookup.py` |
+| `ODCLOUD_SERVICE_KEY` | [국세청 서비스 신청 페이지](https://www.data.go.kr/data/15081808/openapi.do) + [국민연금 서비스 신청 페이지](https://www.data.go.kr/data/3046071/openapi.do) | 국세청 사업자상태 (폐업·휴업)<br>국민연금 사업장 (직원 수·입퇴사 추이) | `check_business_status.py`<br>`lookup_workplace.py` |
+| `DART_API_KEY` | [DART 인증키 신청 페이지](https://opendart.fss.or.kr/uss/umt/EgovMberInsertView.do) | DART 재무제표·감사의견·공시 이상 신호 | `dart_lookup.py` |
 
 **`ODCLOUD_SERVICE_KEY` 하나가 두 개의 서로 다른 서비스를 커버합니다.**
 공공데이터포털은 계정당 인증키가 하나이므로, 포털에서 아래 **두 서비스를 각각 활용신청**한 뒤
@@ -217,8 +217,10 @@ Claude Code처럼 슬래시 명령으로 스킬을 직접 지정할 수 있는 �
 > 개별 승인을 받아야** 합니다. 아래 두 서비스 중 하나만 신청했다면, 키는 똑같은데
 > 한쪽 스크립트만 인증 오류가 나는 상황이 벌어집니다.
 
-1. 국세청_사업자등록정보 진위확인 및 상태조회 (`check_business_status.py`가 사용)
-2. 국민연금공단_국민연금 가입 사업장 내역 (`lookup_workplace.py`가 사용)
+1. [국세청_사업자등록정보 진위확인 및 상태조회](https://www.data.go.kr/data/15081808/openapi.do) (`check_business_status.py`가 사용)
+2. [국민연금공단_국민연금 가입 사업장 내역](https://www.data.go.kr/data/3046071/openapi.do) (`lookup_workplace.py`가 사용)
+
+두 링크 모두 로그인 후 페이지 안의 **"활용신청"** 버튼을 누르면 신청이 시작됩니다.
 
 신청 상태는 **공공데이터포털 로그인 → 마이페이지 → 오픈API → 개발계정**에서 확인합니다.
 두 서비스 모두 "승인" 상태여야 합니다. 대부분 자동승인(즉시)이지만, 심사가 필요한 경우
@@ -287,9 +289,9 @@ python3 skills/company-diligence/scripts/dart_lookup.py --search "카카오"
 
 | 증상 | 원인 | 확인 방법 |
 |---|---|---|
-| 국세청·국민연금 중 한쪽만 오류 | 그 서비스만 활용신청을 안 했거나 승인대기 상태 | 마이페이지 → 오픈API → 개발계정에서 두 서비스 모두 "승인"인지 확인 |
+| 국세청·국민연금 중 한쪽만 오류 | 그 서비스만 활용신청을 안 했거나 승인대기 상태 | [data.go.kr](https://www.data.go.kr) 로그인 → 마이페이지 → 오픈API → 개발계정에서 두 서비스 모두 "승인"인지 확인 |
 | 두 서비스 다 오류, 키는 등록했는데 계속 실패 | Encoding 키를 넣었을 가능성 | 포털에서 Decoding 키를 다시 복사해 교체 |
-| DART만 오류 | opendart.fss.or.kr 별도 계정 미승인, 또는 기업 신청이라 심사 중 | opendart.fss.or.kr 마이페이지에서 상태 확인 |
+| DART만 오류 | 별도 계정 미승인, 또는 기업 신청이라 심사 중 | [DART 인증키 관리 페이지](https://opendart.fss.or.kr/mng/userApiKeyListView.do)에서 상태 확인 |
 | 실행은 되는데 결과가 계속 비어 있음 | 정상 동작 중일 수 있음 (검색 결과 없음은 오류가 아님) | `--json` 옵션으로 원본 응답 확인 |
 
 `--json` 옵션을 붙이면 API 원본 응답을 그대로 볼 수 있어 원인 파악이 빠릅니다.
