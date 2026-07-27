@@ -8,6 +8,19 @@
 
 각 항목은 "무엇을 고쳤나"가 아니라 **"내 결과물이 어떻게 달라지나"** 기준으로 적습니다.
 
+## 1.0.0 (2026-07-27)
+
+
+### Features
+
+* release-please 기반 CHANGELOG/버전 자동화 CI 도입 ([d28992a](https://github.com/useful-skills/job-application-skills/commit/d28992a6ecdf346c08e937936ae6a727d2a27c17))
+* 채용 지원 4단계 Agent Skills 파이프라인 초기 구성 ([40eb715](https://github.com/useful-skills/job-application-skills/commit/40eb715fdb33e9720267b8f70419ebdc4bd3d146))
+
+
+### Bug Fixes
+
+* release-please 첫 릴리스가 1.0.0으로 튀는 문제 수정 ([5c83956](https://github.com/useful-skills/job-application-skills/commit/5c83956299f58c12f8345e4860b2755d04c7d09a))
+
 ## [Unreleased]
 
 ### 문서
