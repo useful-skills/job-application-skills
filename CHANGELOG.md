@@ -8,6 +8,13 @@
 
 각 항목은 "무엇을 고쳤나"가 아니라 **"내 결과물이 어떻게 달라지나"** 기준으로 적습니다.
 
+## [0.3.0](https://github.com/useful-skills/job-application-skills/compare/v0.2.0...v0.3.0) (2026-07-27)
+
+
+### Features
+
+* company-diligence 리포트를 지원자 질문 순서로 재설계 ([#5](https://github.com/useful-skills/job-application-skills/issues/5)) ([edd109a](https://github.com/useful-skills/job-application-skills/commit/edd109aefb9c5b483b2cfb32c8d7f7f75685db4a))
+
 ## [0.2.0](https://github.com/useful-skills/job-application-skills/compare/v0.1.0...v0.2.0) (2026-07-27)
 
 
