@@ -9,7 +9,7 @@ description: >
   Input: 기업명(필수), 홈페이지 URL / 채용공고 URL / 사업자등록번호(선택).
   Output: company-report.md (공식/비공식 구분 + 리스크 스코어 + 판단 근거).
 metadata:
-  version: "0.1.0" # x-release-please-version
+  version: "0.2.0" # x-release-please-version
   repo: https://github.com/useful-skills/job-application-skills
 ---
 
