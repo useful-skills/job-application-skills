@@ -47,6 +47,15 @@ TIMEOUT = 20
 # 국민연금 보험료율. 근로자와 사업주가 절반씩 부담한다.
 PENSION_RATE = 0.09
 
+# 이직률을 %로 낼 수 있는 최소 인원.
+# 5명 중 2명이 나가면 40%지만 이건 통계가 아니라 개인사다.
+# 이 미만이면 비율 대신 실수(實數)만 낸다.
+MIN_HEADCOUNT_FOR_RATE = 10
+
+# 기간별 조회에서 현재 우리가 해석할 줄 아는 필드.
+# 이 외의 필드가 응답에 있으면 알려준다 (고지금액 시계열 존재 여부 확인용).
+KNOWN_PERIOD_FIELDS = {"dataCrtYm", "nwAcqzrCnt", "lssJnngpCnt"}
+
 JNNG_STATUS = {"1": "등록", "2": "탈퇴"}
 STYLE_DIV = {"1": "법인", "2": "개인"}
 
@@ -205,6 +214,58 @@ def cmd_detail(seq):
     print(f"\n인원 증감 추이를 보려면: --trend {seq}")
 
 
+def current_headcount(seq):
+    """이직률 분모로 쓸 현재 가입자 수. 실패하면 None."""
+    try:
+        items = items_of(call("getDetailInfoSearchV2", {"seq": seq}))
+        return int(items[0].get("jnngpCnt")) if items else None
+    except (TypeError, ValueError, IndexError):
+        return None
+
+
+def report_metrics(months, headcount):
+    """지원자 지표를 계산해 출력한다.
+
+    계산은 여기서만 한다. 리포트 문서는 이 출력을 인용할 뿐 다시 계산하지 않는다
+    (references/evidence-grades.md 의 [계산] 등급 규칙).
+    분자와 분모를 항상 함께 출력해서 사용자가 직접 검증할 수 있게 한다.
+    """
+    print("\n지원자 지표")
+    print(f"  {'-' * 46}")
+
+    recent12 = months[:12]
+    losses = sum(m["loss"] for m in recent12)
+    span = len(recent12)
+
+    # 채용 활발도: 최근 6개월 입사자
+    recent6 = months[:6]
+    gains6 = sum(m["gain"] for m in recent6)
+    print(f"  채용 활발도: 최근 {len(recent6)}개월 신규 입사 {gains6}명")
+    print(f"    = {' + '.join(str(m['gain']) for m in recent6) or '0'}")
+
+    # 이직률
+    if headcount is None:
+        print("\n  연환산 이직률: 산출 불가 (현재 가입자 수를 확인하지 못했습니다)")
+        return
+    if headcount < MIN_HEADCOUNT_FOR_RATE:
+        print(f"\n  연환산 이직률: 비율 산출 안 함 (가입자 {headcount}명, "
+              f"{MIN_HEADCOUNT_FOR_RATE}명 미만)")
+        print(f"    최근 {span}개월 퇴사 {losses}명 / 현재 가입자 {headcount}명 (실수만 표기)")
+        print("    소규모 사업장은 1~2명 이동으로 비율이 크게 흔들려 오해를 부릅니다.")
+        return
+
+    annualized = losses * (12 / span) if span else 0
+    rate = annualized / headcount * 100
+    print(f"\n  연환산 이직률: {rate:.0f}%")
+    if span == 12:
+        print(f"    = 12개월 퇴사 {losses}명 / 현재 가입자 {headcount}명")
+    else:
+        print(f"    = {span}개월 퇴사 {losses}명 x (12/{span}) / 현재 가입자 {headcount}명")
+        print(f"      ({span}개월치만 있어 연환산했습니다)")
+    print("    주의: 분모는 기간 평균이 아니라 '현재' 가입자 수입니다.")
+    print("    기간 중 인원이 크게 변한 사업장은 이 값이 왜곡됩니다.")
+
+
 def cmd_trend(seq, rows):
     body = call("getPdAcctoSttusInfoSearchV2", {"seq": seq, "numOfRows": rows})
     items = items_of(body)
@@ -212,24 +273,37 @@ def cmd_trend(seq, rows):
         print(f"seq {seq} 의 기간별 현황 정보가 없습니다.")
         return
 
+    # 응답 순서를 신뢰하지 않는다. 최신 월이 앞에 오도록 직접 정렬한다.
+    months = sorted(
+        (
+            {
+                "ym": str(it.get("dataCrtYm") or ""),
+                "gain": int(it.get("nwAcqzrCnt") or 0),
+                "loss": int(it.get("lssJnngpCnt") or 0),
+            }
+            for it in items
+        ),
+        key=lambda m: m["ym"],
+        reverse=True,
+    )
+
     print(f"seq {seq} 월별 입퇴사 추이 (취득 = 입사, 상실 = 퇴사)\n")
     print(f"  {'자료년월':<10} {'취득':>6} {'상실':>6} {'순증감':>8}")
     print(f"  {'-' * 34}")
 
     net_total = 0
     negatives = 0
-    for it in items:
-        ym = str(it.get("dataCrtYm") or "-")
-        gain = int(it.get("nwAcqzrCnt") or 0)
-        loss = int(it.get("lssJnngpCnt") or 0)
-        net = gain - loss
+    for m in months:
+        net = m["gain"] - m["loss"]
         net_total += net
         if net < 0:
             negatives += 1
         sign = f"+{net}" if net > 0 else str(net)
-        print(f"  {ym:<10} {gain:>6} {loss:>6} {sign:>8}")
+        print(f"  {m['ym'] or '-':<10} {m['gain']:>6} {m['loss']:>6} {sign:>8}")
 
-    print(f"\n  합계 순증감: {net_total:+d} ({len(items)}개월)")
+    print(f"\n  합계 순증감: {net_total:+d} ({len(months)}개월)")
+
+    report_metrics(months, current_headcount(seq))
 
     if net_total < 0:
         print("\n  신호: 조회 구간에서 인원이 순감소했습니다.")
@@ -238,6 +312,13 @@ def cmd_trend(seq, rows):
         print(f"\n  신호: {negatives}개월이 순감소입니다. 지속적 이탈 가능성을 확인하세요.")
     if net_total > 0 and negatives == 0:
         print("\n  조회 구간에서 인원 감소 신호는 없습니다.")
+
+    # 고지금액 시계열이 실제로 오는지 여기서 드러난다.
+    # 온다면 '월급 안 밀리나' 조기 경고를 실제로 만들 수 있다 (지금은 불가).
+    extra = {k for it in items for k in it} - KNOWN_PERIOD_FIELDS
+    if extra:
+        print(f"\n  참고: 해석하지 않은 응답 필드가 있습니다: {', '.join(sorted(extra))}")
+        print("  고지금액 관련 필드가 보이면 references/public-data-sources.md 를 갱신하세요.")
 
 
 def main():
