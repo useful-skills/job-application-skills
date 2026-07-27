@@ -1,0 +1,23 @@
+# 분석 산출물 (개인 정보 포함 가능)
+output/
+data/
+*.local.md
+
+# API 키
+.env
+.env.*
+
+# 캐시
+__pycache__/
+*.pyc
+.cache/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# 로컬 전용 문서
+docs/
+
+# OMC 세션 아티팩트
+.omc/
