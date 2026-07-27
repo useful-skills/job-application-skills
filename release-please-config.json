@@ -4,6 +4,7 @@
     ".": {
       "release-type": "simple",
       "changelog-path": "CHANGELOG.md",
+      "initial-version": "0.1.0",
       "extra-files": [
         { "type": "generic", "path": "skills/jd-analyzer/SKILL.md" },
         { "type": "generic", "path": "skills/company-diligence/SKILL.md" },
