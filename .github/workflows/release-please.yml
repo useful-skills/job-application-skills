@@ -15,8 +15,10 @@ jobs:
   release-please:
     runs-on: ubuntu-latest
     steps:
+      # release-type을 여기 직접 넣으면 action이 release-please-config.json을
+      # 통째로 무시하는 "기본 모드"(Manifest.fromConfig)로 빠진다.
+      # release-type은 release-please-config.json의 packages["."] 안에만 둔다.
       - uses: googleapis/release-please-action@v4
         with:
-          release-type: simple
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
