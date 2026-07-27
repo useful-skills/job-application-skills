@@ -9,7 +9,7 @@ description: >
   Input: 경험 데이터(experience/*.md), application-strategy.md 또는 공고.
   Output: 공고별 이력서 + 변경 근거 리포트(matching-report.md).
 metadata:
-  version: "0.1.0" # x-release-please-version
+  version: "0.2.0" # x-release-please-version
   repo: https://github.com/useful-skills/job-application-skills
 ---
 
