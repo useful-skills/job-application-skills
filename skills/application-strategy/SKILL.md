@@ -9,7 +9,7 @@ description: >
   Input: jd-analysis.md, company-report.md, 지원자 경험 데이터.
   Output: application-strategy.md (BM 분석 + 병목 가설 + 경험 매칭 + 서류/면접 배치안).
 metadata:
-  version: "0.1.0"
+  version: "0.1.0" # x-release-please-version
   repo: https://github.com/useful-skills/job-application-skills
 ---
 

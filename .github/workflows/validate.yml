@@ -1,0 +1,84 @@
+name: Validate
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  validate:
+    name: validate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: SKILL.md frontmatter 검증
+        run: |
+          python3 - <<'PY'
+          import glob, re, sys
+
+          errors = []
+          versions = set()
+
+          for f in sorted(glob.glob('skills/*/SKILL.md')):
+              text = open(f, encoding='utf-8').read()
+              if not text.startswith('---\n'):
+                  errors.append(f'{f}: frontmatter 시작(---)이 없습니다')
+                  continue
+              try:
+                  end = text.index('\n---\n', 4)
+              except ValueError:
+                  errors.append(f'{f}: frontmatter 종료(---)를 찾을 수 없습니다')
+                  continue
+
+              fm = text[4:end]
+              folder = f.split('/')[1]
+              name = re.search(r'^name:\s*(\S+)', fm, re.M)
+              desc = re.search(r'^description:\s*>', fm, re.M)
+              version = re.search(r'version:\s*"([^"]+)"', fm)
+
+              if not name:
+                  errors.append(f'{f}: name 필드가 없습니다')
+              elif name.group(1) != folder:
+                  errors.append(f'{f}: name({name.group(1)})이 폴더명({folder})과 다릅니다')
+
+              if not desc:
+                  errors.append(f'{f}: description 필드가 없습니다')
+
+              if not version:
+                  errors.append(f'{f}: metadata.version 필드가 없습니다')
+              else:
+                  versions.add(version.group(1))
+
+          if len(versions) > 1:
+              errors.append(f'스킬 간 버전이 일치하지 않습니다: {sorted(versions)}')
+
+          if errors:
+              print('검증 실패:')
+              for e in errors:
+                  print(f'  - {e}')
+              sys.exit(1)
+
+          print(f'통과: SKILL.md {len(glob.glob("skills/*/SKILL.md"))}개, 버전 {versions}')
+          PY
+
+      - name: 공공데이터 스크립트 컴파일 검증
+        run: python3 -m py_compile skills/company-diligence/scripts/*.py
+
+      - name: em dash 사용 금지 검사
+        run: |
+          set -e
+          hits=$(grep -rIn -e '—' -e '–' \
+            README.md CHANGELOG.md VERSIONING.md \
+            $(find skills -name "*.md" -o -name "*.py") 2>/dev/null || true)
+          if [ -n "$hits" ]; then
+            echo "em dash(—) 또는 en dash(–) 사용이 발견되었습니다. 마침표나 하이픈으로 바꿔주세요."
+            echo "$hits"
+            exit 1
+          fi
+          echo "통과: em dash 없음"

@@ -5,7 +5,7 @@
 
 `SKILL.md` (YAML frontmatter + 마크다운 지시문) 형식으로 작성되어 있어,
 이 형식을 읽는 에이전트 런타임이면 어디서나 동작합니다.
-특정 벤더에 종속되지 않도록 설계했습니다 — 웹 조회·웹 검색·셸 실행 같은
+특정 벤더에 종속되지 않도록 설계했습니다. 웹 조회·웹 검색·셸 실행 같은
 범용 능력만 가정하고, 특정 제품의 전용 도구나 API를 요구하지 않습니다.
 
 ## 어떤 문제를 푸나
@@ -412,6 +412,16 @@ grep -h "version:" <스킬 설치 경로>/company-diligence/SKILL.md
 ```
 
 1.0.0 전까지는 판정 기준과 출력 형식이 바뀔 수 있습니다.
+
+버전과 CHANGELOG는 [release-please](https://github.com/googleapis/release-please)가
+PR 병합 시 자동으로 관리합니다. PR을 올릴 때 지켜야 할 제목 형식은
+[CONTRIBUTING.md](CONTRIBUTING.md)를 참고하세요.
+
+## 기여
+
+버그 제보, 새 데이터소스 제안, PR 모두 환영합니다.
+PR 제목 형식과 로컬 검증 방법은 [CONTRIBUTING.md](CONTRIBUTING.md)를 참고하세요.
+모든 PR은 코드 오너 승인과 CI 통과가 있어야 병합됩니다.
 
 ## 라이선스
 

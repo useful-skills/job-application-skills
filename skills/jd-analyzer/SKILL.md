@@ -8,7 +8,7 @@ description: >
   Input: 채용공고 URL 또는 붙여넣은 JD 텍스트.
   Output: jd-analysis.md (업무 역추론 + 도메인 브리핑 + 요구역량 우선순위 + 미기재 리스크).
 metadata:
-  version: "0.1.0"
+  version: "0.1.0" # x-release-please-version
   repo: https://github.com/useful-skills/job-application-skills
 ---
 

@@ -1,0 +1,20 @@
+name: PR Title Lint
+
+# pull_request_target을 쓰는 이유: fork에서 온 PR도 검사해야 하는데,
+# 일반 pull_request 이벤트는 fork PR에 read-only 토큰만 주기 때문에
+# 체크 결과를 제대로 못 남길 수 있다. 이 워크플로는 PR의 제목만 읽으므로
+# 코드를 체크아웃하거나 실행하지 않아 pull_request_target 사용이 안전하다.
+on:
+  pull_request_target:
+    types: [opened, edited, synchronize, reopened]
+
+jobs:
+  lint-pr-title:
+    name: lint-pr-title
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
+    steps:
+      - uses: amannn/action-semantic-pull-request@v6
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
