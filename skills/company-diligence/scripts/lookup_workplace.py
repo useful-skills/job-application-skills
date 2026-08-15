@@ -34,15 +34,27 @@ DART에 없는 비상장 소기업에도 적용되기 때문에, 이 스킬에�
 """
 
 import argparse
+import csv
 import json
 import os
+import re
 import sys
 import urllib.error
 import urllib.parse
 import urllib.request
+from pathlib import Path
 
 BASE = "http://apis.data.go.kr/B552015/NpsBplcInfoInqireServiceV2"
 TIMEOUT = 20
+
+# 인증키 없이 쓰는 경로.
+# 공공데이터포털은 같은 데이터를 파일(CSV)로도 공개하며, 파일 다운로드에는 키가 필요 없다.
+# 대신 월 1회 갱신되는 한 달치 스냅샷이라 API보다 할 수 있는 일이 적다 (아래 주의 참조).
+NPS_FILE_PAGE = "https://www.data.go.kr/data/15083277/fileData.do"
+NPS_FILE_DOWNLOAD = "https://www.data.go.kr/cmm/cmm/fileDownload.do"
+NPS_CACHE = Path.home() / ".cache" / "job-application-skills" / "nps-workplaces.csv"
+NPS_ENCODING = "cp949"
+UA = "Mozilla/5.0 (job-application-skills)"
 
 # 국민연금 보험료율. 근로자와 사업주가 절반씩 부담한다.
 PENSION_RATE = 0.09
@@ -65,6 +77,120 @@ SIDO = {
     "43": "충북", "44": "충남", "45": "전북", "46": "전남", "47": "경북",
     "48": "경남", "50": "제주", "51": "강원", "52": "전북",
 }
+
+
+def have_key():
+    return bool(os.environ.get("ODCLOUD_SERVICE_KEY"))
+
+
+def fetch(url):
+    req = urllib.request.Request(url, headers={"User-Agent": UA})
+    with urllib.request.urlopen(req, timeout=60) as resp:
+        return resp.read()
+
+
+def nps_download():
+    """공공데이터포털에서 국민연금 사업장 CSV를 받는다. 인증키가 필요 없다.
+
+    파일 ID는 갱신될 때마다 바뀌므로 상세 페이지에서 현재 ID를 찾아낸다.
+    """
+    print("국민연금 사업장 파일을 내려받습니다 (약 110MB, 인증키 불필요)...", file=sys.stderr)
+    try:
+        page = fetch(NPS_FILE_PAGE).decode("utf-8", errors="replace")
+    except Exception as exc:
+        print(f"상세 페이지를 열지 못했습니다: {exc}", file=sys.stderr)
+        return False
+
+    m = re.search(r"atchFileId=(FILE_[0-9A-Z]+)", page)
+    if not m:
+        print(
+            "다운로드 링크를 찾지 못했습니다. 포털 페이지 구조가 바뀐 것 같습니다.\n"
+            f"직접 받으려면: {NPS_FILE_PAGE}",
+            file=sys.stderr,
+        )
+        return False
+
+    url = f"{NPS_FILE_DOWNLOAD}?atchFileId={m.group(1)}&fileDetailSn=1"
+    try:
+        blob = fetch(url)
+    except Exception as exc:
+        print(f"내려받기 실패: {exc}", file=sys.stderr)
+        return False
+
+    if len(blob) < 1_000_000:
+        print("받은 파일이 너무 작습니다. 포털 응답이 예상과 다릅니다.", file=sys.stderr)
+        return False
+
+    NPS_CACHE.parent.mkdir(parents=True, exist_ok=True)
+    NPS_CACHE.write_bytes(blob)
+    print(f"저장 완료: {NPS_CACHE} ({len(blob) // 1024 // 1024}MB)", file=sys.stderr)
+    return True
+
+
+def nps_rows():
+    """캐시된 CSV를 한 줄씩 흘려보낸다. 112MB를 통째로 메모리에 올리지 않는다."""
+    if not NPS_CACHE.exists() and not nps_download():
+        sys.exit(1)
+    with open(NPS_CACHE, encoding=NPS_ENCODING, errors="replace", newline="") as f:
+        yield from csv.DictReader(f)
+
+
+def col(row, want):
+    """컬럼명에 설명이 붙어 있어서(예: '사업장가입상태코드 1 등록 2 탈퇴') 앞부분으로 찾는다."""
+    for k in row:
+        if k and k.startswith(want):
+            return (row[k] or "").strip()
+    return ""
+
+
+def cmd_file_search(name, rows_limit):
+    """파일 모드 검색. 검색과 상세가 한 번에 나온다 (행 하나에 모든 값이 있다)."""
+    hits = []
+    asof = ""
+    for row in nps_rows():
+        if name in col(row, "사업장명"):
+            hits.append(row)
+            asof = asof or col(row, "자료생성년월")
+            if len(hits) >= rows_limit:
+                break
+
+    if not hits:
+        print(f"'{name}' 으로 등록된 사업장을 찾지 못했습니다.")
+        print("가입자 3인 미만 법인은 아예 수록되지 않습니다. 규모가 매우 작다는 정보 자체가 신호입니다.")
+        return
+
+    print(f"'{name}' 검색 결과 {len(hits)}건 (자료 기준: {asof}, 파일 모드)\n")
+    for row in hits:
+        status = "탈퇴" if col(row, "사업장가입상태코드") == "2" else "등록"
+        cnt = col(row, "가입자수")
+        notice = col(row, "당월고지금액")
+        print(f"  사업장명: {col(row, '사업장명')}")
+        print(f"  상태: {status} / 형태: {'법인' if col(row, '사업장형태구분코드') == '1' else '개인'}")
+        print(f"  업종: {col(row, '사업장업종코드명') or '미상'}")
+        print(f"  주소: {col(row, '사업장도로명상세주소') or col(row, '사업장지번상세주소') or '미상'}")
+        print(f"  사업자등록번호: {col(row, '사업자등록번호')} (앞 6자리만 공개)")
+        print(f"  적용일자: {col(row, '적용일자') or '-'}", end="")
+        print(f" / 탈퇴일자: {col(row, '탈퇴일자')}" if col(row, "탈퇴일자") else "")
+        print(f"  국민연금 가입자 수: {cnt or '미상'}")
+        print(f"  이번 달 입사: {col(row, '신규취득자수') or 0}명 / 퇴사: {col(row, '상실가입자수') or 0}명")
+
+        try:
+            c, n = int(cnt), int(notice)
+            if c > 0 and n > 0:
+                print(f"  1인당 월 고지금액: {n // c:,}원")
+                print(f"  추정 평균 기준소득월액: 약 {int(n / c / PENSION_RATE):,}원")
+                print("    주의: 상한과 하한이 있어 고소득 사업장은 과소추정됩니다.")
+        except (TypeError, ValueError):
+            pass
+
+        if status == "탈퇴":
+            print("\n  신호: 사업장이 탈퇴 처리됐습니다. 폐업 또는 휴업 가능성이 높습니다.")
+        print()
+
+    print("파일 모드의 한계:")
+    print("  이 파일은 한 달치 스냅샷이라 연환산 이직률을 계산할 수 없습니다.")
+    print("  위 입퇴사 숫자는 12개월이 아니라 해당 월 1개월분입니다.")
+    print("  이직률이 필요하면 ODCLOUD_SERVICE_KEY 를 발급받아 --trend 를 쓰세요.")
 
 
 def service_key():
@@ -331,7 +457,30 @@ def main():
     group.add_argument("--trend", metavar="SEQ", type=int, help="월별 인원 증감 추이")
     parser.add_argument("--rows", type=int, default=20, help="가져올 결과 수 (기본 20, 최대 100)")
     parser.add_argument("--json", action="store_true", help="원본 JSON 출력")
+    parser.add_argument(
+        "--file",
+        action="store_true",
+        help="인증키 대신 공공데이터포털 CSV 파일로 조회 (키 없으면 자동 선택)",
+    )
     args = parser.parse_args()
+
+    # 키가 없으면 파일 모드로 자동 전환한다. 키 발급은 회원가입과 승인이 필요해서
+    # 그 자리에서 끝나지 않지만, 파일은 바로 받을 수 있다.
+    use_file = args.file or not have_key()
+
+    if use_file:
+        if args.search:
+            if not args.file:
+                print("ODCLOUD_SERVICE_KEY 가 없어 파일 모드로 조회합니다.\n", file=sys.stderr)
+            cmd_file_search(args.search, min(args.rows, 100))
+            return 0
+        print(
+            "--detail 과 --trend 는 인증키가 있어야 합니다.\n"
+            "파일 모드에서는 --search 로 회사명을 넣으면 직원 수, 업종, 탈퇴 여부,\n"
+            "해당 월 입퇴사까지 한 번에 나옵니다. 월별 추이만 인증키가 필요합니다.",
+            file=sys.stderr,
+        )
+        return 2
 
     if args.json:
         if args.search:
