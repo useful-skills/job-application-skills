@@ -50,6 +50,68 @@ DISCLOSURE_RED_FLAGS = [
 ]
 
 
+def dartlab_available():
+    """dartlab 이 깔려 있으면 DART 인증키 없이 재무제표를 볼 수 있다.
+
+    dartlab 은 DART 공시를 매일 수집해 공개 데이터셋으로 미리 만들어 두고,
+    조회 시 그 파일을 받아 쓴다. 그래서 사용자 쪽 인증키가 필요 없다.
+    """
+    try:
+        import dartlab  # noqa: F401
+    except ImportError:
+        return False
+    return True
+
+
+def dartlab_search(name):
+    """dartlab 으로 상장사를 이름 검색한다. 인증키가 필요 없다."""
+    import dartlab
+
+    try:
+        df = dartlab.searchName(name)
+    except Exception as exc:
+        print(f"dartlab 검색 실패: {exc}", file=sys.stderr)
+        return []
+    if df is None or len(df) == 0:
+        return []
+    return list(df.iter_rows(named=True))
+
+
+def dartlab_financials(stock_code):
+    """dartlab 으로 손익 주요계정을 가져온다. 실패하면 None."""
+    import dartlab
+
+    try:
+        panel = dartlab.Company(stock_code).panel("IS")
+    except Exception as exc:
+        print(f"dartlab 조회 실패: {exc}", file=sys.stderr)
+        return None
+
+    wanted = ("매출액", "영업이익", "당기순이익")
+    out = []
+    for row in panel.iter_rows(named=True):
+        if row.get("항목") in wanted:
+            periods = [(k, v) for k, v in row.items()
+                       if k not in ("snakeId", "항목") and v is not None]
+            out.append((row["항목"], periods[:4]))
+    return out or None
+
+
+def print_dartlab_financials(stock_code):
+    rows = dartlab_financials(stock_code)
+    if not rows:
+        print(f"종목코드 {stock_code} 의 재무 데이터를 찾지 못했습니다.")
+        return 1
+    print(f"=== 종목코드 {stock_code} 주요계정 (dartlab, 인증키 없이 조회) ===\n")
+    for label, periods in rows:
+        print(f"  {label}")
+        for period, value in periods:
+            print(f"    {period}: {value / 1e8:,.0f}억원")
+    print("\n  출처: dartlab 이 DART 공시를 수집해 만든 공개 데이터셋")
+    print("  가장 최근 분기는 공시 시점에 따라 아직 안 채워져 있을 수 있습니다.")
+    return 0
+
+
 def api_key():
     key = os.environ.get("DART_API_KEY")
     if not key:
@@ -219,7 +281,43 @@ def main():
     parser.add_argument("--year", type=int, help="재무제표 사업연도")
     parser.add_argument("--disclosures", type=int, metavar="DAYS", help="최근 N일 공시 스캔")
     parser.add_argument("--refresh-cache", action="store_true", help="corp_code 캐시 갱신")
+    parser.add_argument(
+        "--stock-code",
+        help="종목코드 6자리. dartlab 이 깔려 있으면 인증키 없이 재무 조회",
+    )
     args = parser.parse_args()
+
+    # 인증키가 없어도 dartlab 이 깔려 있으면 상장사는 조회할 수 있다.
+    # dartlab 은 DART 공시를 미리 수집해 둔 공개 데이터셋을 읽으므로 키가 필요 없다.
+    keyless = not os.environ.get("DART_API_KEY") and dartlab_available()
+
+    if args.stock_code:
+        if not dartlab_available():
+            print(
+                "--stock-code 는 dartlab 이 필요합니다.\n"
+                "  uv venv .venv --python 3.12 && uv pip install dartlab",
+                file=sys.stderr,
+            )
+            return 2
+        return print_dartlab_financials(args.stock_code)
+
+    if keyless and args.search:
+        hits = dartlab_search(args.search)
+        if not hits:
+            print(
+                f"'{args.search}' 로 등록된 상장사가 없습니다.\n"
+                "비상장이거나 외부감사 대상이 아닌 법인일 가능성이 높습니다.\n"
+                "이는 오류가 아니라 'DART 미커버' 라는 분석 결과입니다.\n"
+                "SKILL.md Phase 3 의 대체 재무 신호 경로로 진행하세요."
+            )
+            return 0
+        print(f"검색 결과 {len(hits)}건 (dartlab, 인증키 없이 조회)\n")
+        for h in hits[:30]:
+            print(f"  {h.get('종목코드')}  {h.get('회사명')}  [{h.get('시장구분')}]")
+            print(f"      업종: {h.get('업종') or '미상'}")
+            print(f"      대표: {h.get('대표자명') or '미상'}  홈페이지: {h.get('홈페이지') or '없음'}")
+        print("\n재무를 보려면: --stock-code {종목코드}")
+        return 0
 
     key = api_key()
 
