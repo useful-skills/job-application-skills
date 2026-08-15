@@ -450,7 +450,9 @@ job-application-skills/
 
 ## 버전
 
-현재 `0.1.0` 입니다. 스킬 4개가 파이프라인으로 묶여 있어 저장소 단위로 버전을 매깁니다.
+[![최신 릴리스](https://img.shields.io/github/v/release/useful-skills/job-application-skills?label=%EC%B5%9C%EC%8B%A0%20%EB%A6%B4%EB%A6%AC%EC%8A%A4&color=blue)](https://github.com/useful-skills/job-application-skills/releases)
+
+스킬 4개가 파이프라인으로 묶여 있어 저장소 단위로 버전을 매깁니다.
 변경 이력은 [CHANGELOG.md](CHANGELOG.md), 버전 규칙은 [VERSIONING.md](VERSIONING.md)를 보세요.
 
 설치된 스킬의 버전은 `SKILL.md` 상단에서 확인할 수 있습니다.
