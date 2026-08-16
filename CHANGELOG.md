@@ -8,6 +8,14 @@
 
 각 항목은 "무엇을 고쳤나"가 아니라 **"내 결과물이 어떻게 달라지나"** 기준으로 적습니다.
 
+## [0.3.0](https://github.com/useful-skills/job-application-skills/compare/v0.2.0...v0.3.0) (2026-08-16)
+
+
+### Features
+
+* company-diligence 리포트를 지원자 질문 순서로 재설계 ([#5](https://github.com/useful-skills/job-application-skills/issues/5)) ([edd109a](https://github.com/useful-skills/job-application-skills/commit/edd109aefb9c5b483b2cfb32c8d7f7f75685db4a))
+* 인증키 없이도 조회되도록 파일 모드와 dartlab 경로 추가 ([#7](https://github.com/useful-skills/job-application-skills/issues/7)) ([5cb3607](https://github.com/useful-skills/job-application-skills/commit/5cb360739efbf5f76f4ec3141e8aa9c7242d0727))
+
 ## [0.2.0](https://github.com/useful-skills/job-application-skills/compare/v0.1.0...v0.2.0) (2026-07-27)
 
 
