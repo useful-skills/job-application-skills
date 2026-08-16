@@ -9,7 +9,7 @@ description: >
   Input: 기업명(필수), 홈페이지 URL / 채용공고 URL / 사업자등록번호(선택).
   Output: company-report.md (판단 + 근거 + 지원 전 확인 방법. "자세히" 요청 시 8개 절로 확장).
 metadata:
-  version: "0.3.0" # x-release-please-version
+  version: "0.3.1" # x-release-please-version
   repo: https://github.com/useful-skills/job-application-skills
 ---
 

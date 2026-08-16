@@ -8,6 +8,13 @@
 
 각 항목은 "무엇을 고쳤나"가 아니라 **"내 결과물이 어떻게 달라지나"** 기준으로 적습니다.
 
+## [0.3.1](https://github.com/useful-skills/job-application-skills/compare/v0.3.0...v0.3.1) (2026-08-16)
+
+
+### Bug Fixes
+
+* 실제 조회 테스트에서 드러난 정확성 결함 수정 ([#8](https://github.com/useful-skills/job-application-skills/issues/8)) ([e6b5656](https://github.com/useful-skills/job-application-skills/commit/e6b565688d447d81a2e388dc81905db391d8aa75))
+
 ## [0.3.0](https://github.com/useful-skills/job-application-skills/compare/v0.2.0...v0.3.0) (2026-08-16)
 
 
