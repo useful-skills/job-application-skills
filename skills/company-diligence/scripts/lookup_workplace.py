@@ -64,6 +64,12 @@ PENSION_RATE = 0.09
 # 이 미만이면 비율 대신 실수(實數)만 낸다.
 MIN_HEADCOUNT_FOR_RATE = 10
 
+# 국민연금 기준소득월액에는 상한이 있어서, 급여가 아무리 높아도 보험료가 더 오르지 않는다.
+# 역산값이 이 선에 가까우면 상한에 걸린 것이므로 실제 급여는 훨씬 높을 수 있다.
+# 카카오뱅크로 실측했을 때 역산 약 627만원 대 공개 평균연봉 약 1억(월 850만원 상당)으로
+# 큰 차이가 났다. 정확한 상한은 해마다 고시되므로 경고용 근사값만 둔다.
+CEILING_WARN = 6_000_000
+
 # 기간별 조회에서 현재 우리가 해석할 줄 아는 필드.
 # 이 외의 필드가 응답에 있으면 알려준다 (고지금액 시계열 존재 여부 확인용).
 KNOWN_PERIOD_FIELDS = {"dataCrtYm", "nwAcqzrCnt", "lssJnngpCnt"}
@@ -177,9 +183,17 @@ def cmd_file_search(name, rows_limit):
         try:
             c, n = int(cnt), int(notice)
             if c > 0 and n > 0:
+                est = int(n / c / PENSION_RATE)
                 print(f"  1인당 월 고지금액: {n // c:,}원")
-                print(f"  추정 평균 기준소득월액: 약 {int(n / c / PENSION_RATE):,}원")
-                print("    주의: 상한과 하한이 있어 고소득 사업장은 과소추정됩니다.")
+                print(f"  추정 평균 기준소득월액: 약 {est:,}원")
+                if est >= CEILING_WARN:
+                    # 기준소득월액 상한에 걸리면 실제 급여가 아무리 높아도 이 값이 안 올라간다.
+                    # 고연봉 회사일수록 오차가 커지므로 숫자를 단독으로 쓰면 안 된다.
+                    print("    주의: 이 값은 상한에 가까워 실제 급여보다 크게 낮을 수 있습니다.")
+                    print("    고연봉 회사일수록 오차가 커집니다. 하한선으로만 보고,")
+                    print("    실제 수준은 채용사이트 연봉 정보로 교차확인하세요.")
+                else:
+                    print("    주의: 상한과 하한이 있어 고소득 사업장은 과소추정됩니다.")
         except (TypeError, ValueError):
             pass
 
