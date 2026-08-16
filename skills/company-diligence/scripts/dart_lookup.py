@@ -93,8 +93,23 @@ def dartlab_financials(stock_code):
         if row.get("항목") in wanted:
             periods = [(k, v) for k, v in row.items()
                        if k not in ("snakeId", "항목") and v is not None]
+            # 응답 컬럼 순서를 신뢰하지 않는다. 최신 분기가 앞에 오도록 직접 정렬한다.
+            periods.sort(key=lambda kv: kv[0], reverse=True)
             out.append((row["항목"], periods[:4]))
     return out or None
+
+
+def quarters_are_consecutive(labels):
+    """'2026Q2','2026Q1' 처럼 분기가 끊김 없이 이어지는지 확인한다.
+
+    회사에 따라 특정 분기 값이 비어 있어서, 값이 있는 것만 모으면
+    연속되지 않은 분기가 나란히 놓인다. 그대로 보여주면 추이로 오독된다.
+    """
+    try:
+        nums = [int(l[:4]) * 4 + int(l[-1]) for l in labels]
+    except (ValueError, IndexError):
+        return False
+    return all(a - b == 1 for a, b in zip(nums, nums[1:]))
 
 
 def print_dartlab_financials(stock_code):
@@ -103,12 +118,21 @@ def print_dartlab_financials(stock_code):
         print(f"종목코드 {stock_code} 의 재무 데이터를 찾지 못했습니다.")
         return 1
     print(f"=== 종목코드 {stock_code} 주요계정 (dartlab, 인증키 없이 조회) ===\n")
+    gapped = False
     for label, periods in rows:
+        labels = [p for p, _ in periods]
         print(f"  {label}")
         for period, value in periods:
             print(f"    {period}: {value / 1e8:,.0f}억원")
+        if len(labels) > 1 and not quarters_are_consecutive(labels):
+            gapped = True
+            print("      (중간에 값이 비는 분기가 있어 연속된 추이가 아닙니다)")
     print("\n  출처: dartlab 이 DART 공시를 수집해 만든 공개 데이터셋")
     print("  가장 최근 분기는 공시 시점에 따라 아직 안 채워져 있을 수 있습니다.")
+    if gapped:
+        print("  일부 계정은 분기가 띄엄띄엄합니다. 증감을 추세로 읽지 마세요.")
+    print("  은행·보험·증권은 '매출액'의 의미가 일반 기업과 다릅니다.")
+    print("  업종이 금융이면 이 수치를 일반 제조·서비스 기업과 같은 잣대로 비교하지 마세요.")
     return 0
 
 
